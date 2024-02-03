@@ -11,6 +11,6 @@
 Run demo in
 
 ```
-python demo_trento.py
+python demo_muufl.py
 ```
 Text encoder ：https://drive.google.com/file/d/1f7_1kNAk-Xw5gxyirLrfyRZZ_IfB1px-/view?usp=drive_link
