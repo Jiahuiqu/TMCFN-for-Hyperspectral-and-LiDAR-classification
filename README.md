@@ -1,5 +1,5 @@
 # TMCFN
-The implementation of the paper "S$^2$CycleDiff: Spatial-Spectral-Bilateral Cycle-Diffusion Frameworkfor Hyperspectral Image Super-Resolution" (IEEE Transactions on Geoscience and Remote Sensing 2024)
+The implementation of the paper "TMCFN: Text-Supervised Multidimensional Contrastive Fusion Network for Hyperspectral and LiDAR Classification" (IEEE Transactions on Geoscience and Remote Sensing 2024)
 
 ## Prerequisites
 
