@@ -17,12 +17,12 @@ python demo_muufl.py
 Text encoder ：https://drive.google.com/file/d/1f7_1kNAk-Xw5gxyirLrfyRZZ_IfB1px-/view?usp=drive_link
 
 ## Cite
-@ARTICLE{10462155,
-  author={Yang, Yueguang and Qu, Jiahui and Dong, Wenqian and Zhang, Tongzhen and Xiao, Song and Li, Yunsong},
-  journal={IEEE Transactions on Geoscience and Remote Sensing}, 
-  title={TMCFN: Text-Supervised Multidimensional Contrastive Fusion Network for Hyperspectral and LiDAR Classification}, 
-  year={2024},
-  volume={},
-  number={},
-  pages={1-15},
+@ARTICLE{10462155,  
+  author={Yang, Yueguang and Qu, Jiahui and Dong, Wenqian and Zhang, Tongzhen and Xiao, Song and Li, Yunsong},  
+  journal={IEEE Transactions on Geoscience and Remote Sensing},   
+  title={TMCFN: Text-Supervised Multidimensional Contrastive Fusion Network for Hyperspectral and LiDAR Classification},   
+  year={2024},  
+  volume={},  
+  number={},  
+  pages={1-15},  
   doi={10.1109/TGRS.2024.3374372}}
