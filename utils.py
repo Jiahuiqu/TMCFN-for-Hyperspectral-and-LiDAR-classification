@@ -8,7 +8,6 @@ import scipy.sparse as sp
 from torch_geometric.utils import from_scipy_sparse_matrix
 import torch.nn.functional as F
 
-
 def h5_data_write(matrix, save_path):
     print("h5py文件正在写入磁盘...")
     with h5py.File(save_path, 'w') as f:
@@ -25,35 +24,6 @@ def h5_data_read(filename):
     print("文件读取完毕...")
     return matrix
 
-def get_data(dataset_name='muufl'):
-    if dataset_name == 'muufl':
-        print('Muufl......')
-        hsi = sio.loadmat('../dataset/muufl/HSI.mat')['data']
-        labels = sio.loadmat('../dataset/muufl/HSI.mat')['gt']
-        lidar = sio.loadmat('../dataset/muufl/LiDAR_DEM.mat')['LiDAR_DEM']
-
-    if dataset_name == 'trento':
-        print("trento......")
-        hsi = sio.loadmat('./HSI_data.mat')['HSI_data']
-        labels = sio.loadmat('./All_Label.mat')['All_Label']
-        lidar = sio.loadmat('./LiDAR_data.mat')['LiDAR_data']
-
-
-    if dataset_name == '2013Houston':
-        print("2013Houston......")
-        hsi = sio.loadmat('../dataset/houston/HSI_data.mat')['HSI_data']
-        labels = sio.loadmat('../dataset/houston/All_Label.mat')['All_Label']
-        lidar = sio.loadmat('../dataset/houston/LiDAR_data.mat')['LiDAR_data']
-
-    hsi_ = np.zeros_like(hsi)
-    lidar_ = np.zeros_like(lidar)
-    scaler = StandardScaler()
-    for i in range(hsi.shape[2]):
-        hsi_[:,:,i] = scaler.fit_transform(hsi[:,:,i])
-    lidar_ = scaler.fit_transform(lidar)
-
-    return hsi_, labels, lidar_
-
 def applyPCA(X, numComponents=48):
     newX = np.reshape(X, (-1, X.shape[2]))
     pca = PCA(n_components=numComponents, whiten=True)
@@ -61,6 +31,35 @@ def applyPCA(X, numComponents=48):
     newX = np.reshape(newX, (X.shape[0], X.shape[1], numComponents))
     return newX, pca
 
+def get_data(dataset_name='muufl', NC=32):
+    if dataset_name == 'muufl':
+        print('Muufl......')
+        hsi = sio.loadmat('./dataset/muufl/HSI_data.mat')['HSI_data']
+        labels = sio.loadmat('./dataset/muufl/All_Label.mat')['All_Label']
+        lidar = sio.loadmat('./dataset/muufl/LiDAR_data.mat')['LiDAR_data']
+
+    if dataset_name == 'trento':
+        print("trento......")
+        hsi = sio.loadmat('./dataset/trento/HSI_data.mat')['HSI_data']
+        labels = sio.loadmat('./dataset/trento/All_Label.mat')['All_Label']
+        lidar = sio.loadmat('./dataset/trento/LiDAR_data.mat')['LiDAR_data']
+
+
+    if dataset_name == '2013Houston':
+        print("2013Houston......")
+        hsi = sio.loadmat('./dataset/houston/HSI_data.mat')['HSI_data']
+        labels = sio.loadmat('./dataset/houston/All_Label.mat')['All_Label']
+        lidar = sio.loadmat('./dataset/houston/LiDAR_data.mat')['LiDAR_data']
+
+    hsi, _ = applyPCA(hsi, NC)
+
+    hsi_ = np.zeros_like(hsi)
+    scaler = StandardScaler()
+    for i in range(hsi.shape[2]):
+        hsi_[:,:,i] = scaler.fit_transform(hsi[:,:,i])
+    lidar_ = scaler.fit_transform(lidar)
+
+    return hsi_, labels, lidar_
 
 
 class Queue:
@@ -117,7 +116,6 @@ class Queue:
 
 
 def get_adj(hsi,all, lidar, device, edge_num=10):
-
 
     distances_hsi = F.pairwise_distance(hsi.unsqueeze(1), hsi)
     distances_lidar = F.pairwise_distance(lidar.unsqueeze(1), lidar)

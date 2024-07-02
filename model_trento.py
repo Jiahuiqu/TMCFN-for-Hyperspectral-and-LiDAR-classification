@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from DGMlib.model_dDGM_muufl import DGM_Model
+from DGMlib.model_dDGM_trento import DGM_Model
 import copy
 import torch.nn.functional as F
 from collections import OrderedDict
@@ -10,8 +10,10 @@ import en_transformer
 import utils
 from einops import rearrange, repeat
 
+
 class Bottleneck(nn.Module):
     expansion = 4
+
     def __init__(self, inplanes, planes, stride=1):
         super().__init__()
 
@@ -260,8 +262,7 @@ class EMA():
         if old is None:
             return new
         return old * self.beta + (1 - self.beta) * new
-
-#
+##
 class Attention_Feature_Fusion_Module(torch.nn.Module):
     def __init__(self):
         super(Attention_Feature_Fusion_Module, self).__init__()
@@ -283,15 +284,14 @@ class Attention_Feature_Fusion_Module(torch.nn.Module):
 
 
     def forward(self, x1, x2):
-
-        x1_ = torch.unsqueeze(self.MLP_1(torch.squeeze(x1)), dim=1)
-        x2_ = torch.unsqueeze(self.MLP_2(torch.squeeze(x2)), dim=-1)
+        x1_ = torch.unsqueeze(self.MLP_1(torch.squeeze(x1)), dim=1) # N * 1 * C
+        x2_ = torch.unsqueeze(self.MLP_2(torch.squeeze(x2)), dim=-1)  #  N * C * 1
         alpha = torch.squeeze(self.sigmoid(torch.matmul(x1_, x2_)), dim=-1)
         add_x = torch.squeeze(x1) * alpha + torch.squeeze(x2) * (1 - alpha)
         out = self.MLP_3(torch.cat([x1, add_x, x2], dim=-1))
         return out
 
-##
+
 class Contrastive_Fusion_Feature_Learning_Module_ViT(torch.nn.Module):
     def __init__(self, img_size, input_channels, patch_size, dim, depth, heads, mlp_dim,
                                              dropout, dim_head, moving_average_decay=0.99, use_momentum=True):
@@ -354,7 +354,7 @@ class Contrastive_Fusion_Feature_Learning_Module_ViT(torch.nn.Module):
 
         return o1, o2, o3, loss
 
-#
+##
 class Text_Guided_Attention_Feature_Fusion_Module(torch.nn.Module):
 
     def __init__(self):
@@ -362,7 +362,6 @@ class Text_Guided_Attention_Feature_Fusion_Module(torch.nn.Module):
         self.MLP_Text = torch.nn.Sequential(nn.Linear(512, 32))
         self.MLP_Image = torch.nn.Sequential(nn.Linear(32, 32))
         self.linear_mapping_matching_dim = nn.Linear(512, 32 * 3)
-        # self.linear_mapping = nn.Linear(32, 1)
         self.sig = nn.Sigmoid()
 
     def forward(self, x1, x2, x3, ft):
@@ -386,14 +385,14 @@ class Text_Guided_Attention_Feature_Fusion_Module(torch.nn.Module):
 class Vision_Net_Final(nn.Module):
     def __init__(self, hparams, patchsize_HSI, device1, device2, class_num):
         super(Vision_Net_Final, self).__init__()
-        self.device = device1
         self.device1 = device1
         self.device2 = device2
         self.hparams = hparams
-        self.FCFLM = Contrastive_Fusion_Feature_Learning_Module_ViT(img_size=patchsize_HSI, input_channels=15,patch_size=2, dim=32, depth=3, heads=4, mlp_dim=32, dropout=0.3, dim_head=32).to(self.device1)
+        # self.FCFLM = Contrastive_Fusion_Feature_Learning_Module_ViT(img_size=patchsize_HSI, input_channels=32,patch_size=2, dim=32, depth=2, heads=4, mlp_dim=32, dropout=0.3, dim_head=32).to(self.device1)
+        self.FCFLM = Contrastive_Fusion_Feature_Learning_Module_ViT(img_size=patchsize_HSI, input_channels=32,patch_size=2, dim=32, depth=3, heads=4, mlp_dim=32, dropout=0.3, dim_head=32).to(self.device1)
         self.Graph_DGFL = DGM_Model(hparams).to(self.device2)  # graph dynamic construction and embedding
         self.TAF2M = Text_Guided_Attention_Feature_Fusion_Module().to(self.device2)
-        self.projector = nn.Sequential(nn.Linear(32, 512)).to(self.device2) # dimension matching
+        self.projector = nn.Sequential(nn.Linear(32, 512)).to(self.device2)  # dimension matching
 
     def forward(self,patch_hsi=None, patch_lidar=None, ft=None, labeled_mask=None, warm_up=False, len_labeled=None):
 
@@ -431,7 +430,7 @@ class Vision_Net_Final(nn.Module):
 
         return Z_vison, loss_cl, logprobs
 
-#
+##
 class Text_Net(nn.Module):
     def __init__(self,
                  embed_dim: int,
@@ -487,7 +486,7 @@ class Text_Net(nn.Module):
 
         x = x + self.positional_embedding.type(torch.float32)
         x = x.permute(1, 0, 2)  # NLD -> LND
-        x = self.transformer(x)
+        x = self.transformer(x)  # torch.Size([77, 6, 512])
         x = x.permute(1, 0, 2)  # LND -> NLD
         x = self.ln_final(x).type(torch.float32)
 
@@ -527,4 +526,3 @@ class Model_All(torch.nn.Module):
         Z_text = self.feature_text
 
         return Z_vison, Z_text, loss_vision_CL,logprobs
-

@@ -2,14 +2,13 @@ import sys
 print("\n".join(sys.path))
 sys.path.insert(0, './keops')
 import os
-os.environ["CUDA_VISIBLE_DEVICES"] = '0,1, 2,3'
 os.environ['MASTER_ADDR'] = 'localhost'
 os.environ['MASTER_PORT'] = '5678'
 os.environ["USE_KEOPS"] = "False"
 import numpy as np
 import torch
 from argparse import ArgumentParser
-from model import  Model_All
+from model_trento import  Model_All
 import utils
 import time
 from torch.utils.data.dataset import Dataset
@@ -21,6 +20,7 @@ import torch.nn as nn
 import scipy.io as sio
 
 class ClipLoss(nn.Module):
+
     def __init__(self, logit_scale=5):
         super().__init__()
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))  #####
@@ -34,6 +34,7 @@ class ClipLoss(nn.Module):
         # normalized features
         image_features = image_features / image_features.norm(dim=1, keepdim=True)
         text_features = text_features / text_features.norm(dim=1, keepdim=True)
+
         logit_scale = self.logit_scale.exp()
 
         ## cosine similarity as logits
@@ -45,6 +46,7 @@ class ClipLoss(nn.Module):
     def forward(self, image_features, text_features, cal_similarity=False):
         device = image_features.device
         logits_per_image, logits_per_text = self.get_logits(image_features, text_features)
+
         if cal_similarity:
             return logits_per_image
 
@@ -214,7 +216,6 @@ def train(labels):
     Loss = ClipLoss()
     opti = torch.optim.Adam([{'params': model.vision_net.parameters(), 'lr': 0.0005},])
 
-    ## ----------------------------------------------------------------------------------------------------------------
     for epoch in range(epoches):
         model.train()
         opti.zero_grad()
@@ -233,18 +234,13 @@ def train(labels):
             train_lab = label[train_mask_]
 
             dim_feature = Z_vison.shape[-1]
-            capacity = len(train_lab)  // class_num ##3
+            capacity = len(train_lab)  // class_num #
             queue_0 = utils.Queue(capacity=capacity, dim=dim_feature)
             queue_1 = utils.Queue(capacity=capacity, dim=dim_feature)
             queue_2 = utils.Queue(capacity=capacity, dim=dim_feature)
             queue_3 = utils.Queue(capacity=capacity, dim=dim_feature)
             queue_4 = utils.Queue(capacity=capacity, dim=dim_feature)
             queue_5 = utils.Queue(capacity=capacity, dim=dim_feature)
-            queue_6 = utils.Queue(capacity=capacity, dim=dim_feature)
-            queue_7 = utils.Queue(capacity=capacity, dim=dim_feature)
-            queue_8 = utils.Queue(capacity=capacity, dim=dim_feature)
-            queue_9 = utils.Queue(capacity=capacity, dim=dim_feature)
-            queue_10 = utils.Queue(capacity=capacity, dim=dim_feature)
 
             for n, label in enumerate(train_lab):
                 if (label == 0):
@@ -259,16 +255,6 @@ def train(labels):
                     queue_4.enqueue(train_feature[n,:])
                 elif (label == 5):
                     queue_5.enqueue(train_feature[n,:])
-                elif (label == 6):
-                    queue_6.enqueue(train_feature[n,:])
-                elif (label == 7):
-                    queue_7.enqueue(train_feature[n,:])
-                elif (label == 8):
-                    queue_8.enqueue(train_feature[n,:])
-                elif (label == 9):
-                    queue_9.enqueue(train_feature[n,:])
-                elif (label == 10):
-                    queue_10.enqueue(train_feature[n,:])
 
             for n in range(capacity):
                 temp = torch.empty((1, dim_feature))
@@ -277,28 +263,25 @@ def train(labels):
                 temp = torch.cat([temp, torch.unsqueeze(queue_2.dequeue(), dim=0)], dim=0)
                 temp = torch.cat([temp, torch.unsqueeze(queue_3.dequeue(), dim=0)], dim=0)
                 temp = torch.cat([temp, torch.unsqueeze(queue_4.dequeue(), dim=0)], dim=0)
-                temp = torch.cat([temp, torch.unsqueeze(queue_5.dequeue(), dim=0)], dim=0)
-                temp = torch.cat([temp, torch.unsqueeze(queue_6.dequeue(), dim=0)], dim=0)
-                temp = torch.cat([temp, torch.unsqueeze(queue_7.dequeue(), dim=0)], dim=0)
-                temp = torch.cat([temp, torch.unsqueeze(queue_8.dequeue(), dim=0)], dim=0)
-                temp = torch.cat([temp, torch.unsqueeze(queue_9.dequeue(), dim=0)], dim=0)
-                temp = torch.cat([temp, torch.unsqueeze(queue_10.dequeue(), dim=0)], dim=0).to(device2)
+                temp = torch.cat([temp, torch.unsqueeze(queue_5.dequeue(), dim=0)], dim=0).to(device2)
                 loss_clip_all += Loss(image_features=temp, text_features=Z_text)
 
             # GRAPH LOSS
             logprobs = logprobs[:, train_mask_, :, :]
             graph_loss = 0.
             if logprobs is not None and epoch + 1 > warm_up_epoch:
-                corr_pred = (torch.unsqueeze(train_pred, dim=0) == torch.unsqueeze(train_lab, dim=0)).float().detach()
+                corr_pred = (torch.unsqueeze(train_pred, dim=0) == torch.unsqueeze(train_lab,
+                                                                                   dim=0)).float().detach()
                 wron_pred = (1 - corr_pred)
                 if avg_accuracy[i] is None:
                     avg_accuracy[i] = torch.ones_like(corr_pred) * 0.5
                 point_w = (avg_accuracy[i] - corr_pred)
                 if (len(logprobs.shape) == 4):
                     for m in range(logprobs.shape[-1]):
-                        graph_loss += point_w * logprobs[:, :, :, m].exp().mean([-1,-2])
+                        graph_loss += point_w * logprobs[:, :, :, m].exp().mean([-1, -2])
                 graph_loss = graph_loss.mean()
                 avg_accuracy[i] = avg_accuracy[i].to(corr_pred.device) * 0.95 + 0.05 * corr_pred
+
 
             # loss = 0.5 * loss_vision_CL + 1 * loss_clip_all + 1 * graph_loss
             loss = 0.5 * loss_vision_CL + 1.5 * loss_clip_all + 1 * graph_loss
@@ -307,8 +290,9 @@ def train(labels):
             opti.step()
             model.vision_net.FCFLM.update_moving_average()
             corr_pred = (train_pred == train_lab).float().detach().sum()
-            print(f"epoch: {epoches}-{epoch + 1}-{i}  loss:{ loss.item()}  train_acc {corr_pred / len(train_lab)}")
-            fw.write(f"epoch: {epoches}-{epoch + 1}-{i}  loss:{ loss.item()}  train_acc {corr_pred / len(train_lab)}\n")
+            print(f"epoch: {epoches}-{epoch + 1}-{i} loss:{loss}  train_acc {corr_pred / len(train_lab)} ")
+            fw.write(f"epoch: {epoches}-{epoch + 1}-{i} loss:{loss}  train_acc {corr_pred / len(train_lab)}\n ")
+
 
         if((epoch+1) % 5 ==0):
             model.eval()
@@ -335,7 +319,7 @@ def train(labels):
             OA = accuracy_score(test_true, test_pred)
             AA = recall_score(test_true, test_pred, average='macro')
             kappa = cohen_kappa_score(test_true, test_pred)
-            class_name = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11']  # muffl
+            class_name = ['1', '2', '3', '4', '5', '6']  # trento
             report_log = classification_report(test_true, test_pred, target_names=class_name, digits=4)
             print(report_log)
             fw.write(report_log)
@@ -345,8 +329,8 @@ def train(labels):
                 OA_best = OA
                 AA_OA_best = AA
                 Kappa_OA_best = kappa
-                torch.save(model.state_dict(), f"./results/muufl/Muufl_{OA}.pth")
-                sio.savemat(f'./results/muufl/muufl_{OA_best}.mat', {'data': pred_map.numpy()})
+                torch.save(model.state_dict(), f"./results/trento/trento_{OA}.pth")
+                sio.savemat(f'./results/trento/trento_{OA_best}.mat', {'data': pred_map.numpy()})
             print(f"OA: {OA}\nAA: {AA}\nKappa: {kappa}\n\nOA_best:{OA_best}\nAA_OA_best:{AA_OA_best}\nKappa_OA_best:{Kappa_OA_best}\n")
             fw.write(f"OA: {OA}\nAA: {AA}\nKappa: {kappa}\n\nOA_best:{OA_best}\nAA_OA_best:{AA_OA_best}\nKappa_OA_best:{Kappa_OA_best}\n")
 
@@ -355,7 +339,7 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument("--num_gpus", default=4, type=int)
     parser.add_argument("--data", default='Cora')
-    parser.add_argument("--fold", default='0', type=int)  # Used for k-fold cross validation in tadpole/ukbb
+    parser.add_argument("--fold", default='0', type=int)
     parser.add_argument("--conv_layers", default=[[32, 32]], type=lambda x: eval(x))
     parser.add_argument("--dgm_layers", default=[[32 * 3, 32]], type=lambda x: eval(x))
     parser.add_argument("--fc_layers", default=[8, 8, 3], type=lambda x: eval(x))
@@ -365,8 +349,7 @@ if __name__ == '__main__':
     parser.add_argument("--k", default=3, type=int)
     parser.add_argument("--pooling", default='add')
     parser.add_argument("--distance", default='euclidean')
-    parser.add_argument("--dropout", default=0.0, type=float)
-    parser.add_argument("--lr", default=1e-2, type=float)
+    parser.add_argument("--dropout", default=0.3, type=float)
     parser.add_argument("--test_eval", default=10, type=int)
     parser.set_defaults(default_root_path='./log')
     params = parser.parse_args()
@@ -378,25 +361,25 @@ if __name__ == '__main__':
         random.seed(seed)
         torch.backends.cudnn.deterministic = True
 
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    device2 = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    # -----------------------------------------------------------------------------------
-    dataset_name = 'muufl'
-    N_PCA = 15
+    device = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
+    device2 = torch.device("cuda:3" if torch.cuda.is_available() else "cpu")
+
+    # ------------------------------------------------------------------------------------------------------------------
+    dataset_name = 'trento'
+    N_PCA = 32
+
     setup_seed(20)
     patchsize_HSI = 19
     patchsize_LiDAR = 19
-    graph_num = 15
-    num_samples_per_class = 15 * 10
-
-    # -----------------------------------------------------------------------------------
-
+    graph_num = 10
+    num_samples_per_class = 10 * 10
+    # ----------------------------------------------------------------------------------
     print(f"{patchsize_HSI} x {patchsize_HSI}")
-    hsi, labels, lidar = utils.get_data(dataset_name=dataset_name, NC=N_PCA)
+    hsi, labels, lidar = utils.get_data(dataset_name=dataset_name)
     lidar = np.expand_dims(lidar, 2).repeat(N_PCA, axis=2)
     class_num = labels.max()
-    # ----------------------------------------------------------------------------------
 
+    # ----------------------------------------------------------------------------------
     gt_labeled, labeled_data_hsi, labeled_data_lidar, All_labeled_Patch_HSI, All_labeled_Patch_LiDAR, train_mask, test_mask, pos_array, batch_data_id, unlabeled_Patch_HSI, unlabeled_Patch_LiDAR = \
         get_data(hsi=hsi, lidar=lidar, gt=labels, graph_num=graph_num, patchsize_HSI=patchsize_HSI,
                  patchsize_LiDAR=patchsize_LiDAR, num_samples_per_class=num_samples_per_class,
@@ -412,27 +395,22 @@ if __name__ == '__main__':
                         batch_data_id, unlabeled_HSI_list, unlabeled_LiDAR_list)
 
     train_loader = DataLoader(dataset, batch_size=1, shuffle=True)  #
-
     # ----------------------------------------------------------------------------------
-    text = ['A sample of Trees. Trees are natural vegetation, coexisting with grass in the landscape. They belong to the plant category, growing on the ground. Buildings cast shadows, creating contrast with trees. Trees in urban areas are often found near roads and sidewalks.',
-            'A sample of Mostly grass. Grass, a natural vegetation, forms green lawns and often grows alongside trees. Together, they create a natural ecosystem, supporting oxygen production and habitats. Grass is distinct from roads and sidewalks. It may also interface with dirt and sand, adding to the diverse ground surface.',
-            'A sample of Mixed ground surface. Mixed ground surfaces combine various materials like grass, gravel, dirt, and wood chips. They can harmonize with trees, casting shadows on different textures. These surfaces also interact with roads and sidewalks. Transitional areas between surfaces often feature gravel or pavement.',
-            'A sample of Dirt and sand. Dirt and sand are natural ground materials commonly found in outdoor environments. They often coexist in areas such as beaches, deserts, and construction sites. Dirt and sand provide a distinct texture and color to the ground surface.',
-            'A sample of Road. Roads are constructed for vehicle transportation, interacting with sidewalks, buildings, and trees to shape the urban landscape. Yellow curbs indicate parking restrictions. Roads may pass through mixed ground surfaces or border mostly grass areas.',
-            'A sample of Water. Water refers to bodies of water such as oceans, lakes, rivers, and ponds.Water bodies can interact with Trees and Grass.They can be adjacent to Beach areas characterized by sand and Mixed ground surfaces. Water bodies may be crossed by Bridges or bordered by Buildings and Sidewalks.',
-            'A sample of Building Shadow. Building shadows are cast when sunlight is obstructed, creating striking patterns and contrasts on the ground. They interact with trees, falling on canopies and creating shaded areas. Building shadows are influenced by building position and height, adding depth and texture to the environment. They enhance the visual appeal of mixed ground surfaces, highlighting texture variations.',
-            'A sample of Building. Buildings are man-made structures for residential, commercial, or industrial use. They interact with roads and sidewalks, serving as landmarks and casting shadows that affect lighting. Buildings may feature cloth panels for sun protection and aesthetics.',
-            'A sample of Sidewalk. Sidewalks are pedestrian walkways next to roads, ensuring safety away from traffic. They border buildings, roads, and grassy areas. Sidewalks can be made of concrete or paving stones and may have yellow curbs for parking restrictions or loading zones.',
-            'A sample of Yellow curb. Yellow curbs are yellow-painted roadside curbs that indicate parking regulations. They mark no-parking zones, loading areas, and reserved spaces. Yellow curbs interact with sidewalks and roads, guiding drivers and pedestrians. They are often found near buildings, indicating restricted parking areas.',
-            'A sample of Cloth panels. Cloth panels are fabric materials used outdoors in canopies, tents, or awnings for shade and protection. They can create designated areas or visual barriers as temporary partitions. Cloth panels enhance parks, outdoor events, and recreational areas.'
-            ]
-
+    text = ['A sample of Apple trees. Apple trees are deciduous fruit trees with medium-sized stature and broad, spreading canopies. They bear glossy green oval leaves with serrated edges. They thrive in orchards or farmlands, with the ground supporting their roots. Surrounding roads aid in transporting apples',
+            'A sample of Buildings. Buildings vary in size, designs, and materials like concrete, brick, wood, and glass. They stand firmly on the ground with rooted foundations. Roads connect buildings and amenities for accessibility. In urban areas, buildings form cityscapes with roads and green spaces, including parks and woods.',
+            'A sample of Ground. The ground, composed of soil, rocks, and geological materials, serves as the foundation for buildings, roads, and vineyards. It nurtures apple trees and plants in woods, supporting their growth. Roads connect vineyards and apple orchards, passing through various locations.',
+            'A sample of Woods. The ground supports tree and vegetation growth in woods. Roads may pass through or surround woods. Woods are a habitat for wildlife, including pollinators that benefit apple trees and vineyards.',
+            'A sample of Vineyard. Vineyards are cultivated areas dedicated to growing grapevines for wine production or other purposes. Ground supports grapevines in vineyards. Roads aid grape transportation. Vineyards border woods with diverse flora and fauna.',
+            'A sample of Roads. Roads are designed pathways for vehicular and pedestrian traffic. They vary in size and construction materials, including asphalt, concrete, or grave. Roads connect landscapes - orchards, vineyards, and woods. ',
+             ]
     model = Model_All(params, patchsize_HSI, device1=device, device2=device2, class_num=labels.max(), text=text)
 
-    fw = open("./log_muufl.txt", 'a+')
+    fw = open("./log_Trento.txt", 'a+')
     fw.write(f"\n\n\n")
-    fw.write(f"Time: {time.asctime( time.localtime(time.time()) )}\n")
+    fw.write(f"Time: {time.asctime(time.localtime(time.time()))}\n")
     fw.write(f"{patchsize_HSI} x {patchsize_HSI}")
     print(f"{patchsize_HSI} x {patchsize_HSI}")
     train(labels)
+
+
 

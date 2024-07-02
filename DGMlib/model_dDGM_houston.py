@@ -57,18 +57,20 @@ class DGM_Model(torch.nn.Module):
         self.edges = init_edges.clone()
         for f, g1, g2, g3 in zip(self.graph_f, self.node_g_1, self.node_g_2, self.node_g_3):
             b, n, d = x1.shape
-            x1 = torch.nn.functional.relu(g1(torch.dropout(x1.view(-1,d), self.hparams.dropout, train=self.training), self.edges)).view(b,n,-1)  # torch.Size([1, 2708, 32])
-            x2 = torch.nn.functional.relu(g2(torch.dropout(x2.view(-1,d), self.hparams.dropout, train=self.training), self.edges)).view(b,n,-1)  # torch.Size([1, 2708, 32])
-            x3 = torch.nn.functional.relu(g3(torch.dropout(x3.view(-1,d), self.hparams.dropout, train=self.training), self.edges)).view(b,n,-1)  # torch.Size([1, 2708, 32])
+            x1 = torch.nn.functional.relu(g1(torch.dropout(x1.view(-1, d), 0.3, train=self.training), self.edges)).view(
+                b, n, -1)
+            x2 = torch.nn.functional.relu(g2(torch.dropout(x2.view(-1, d), 0.3, train=self.training), self.edges)).view(
+                b, n, -1)
+            x3 = torch.nn.functional.relu(g3(torch.dropout(x3.view(-1, d), 0.3, train=self.training), self.edges)).view(
+                b, n, -1)
 
-            # x1 = g1(x1.view(-1, d), self.edges).view(b, n, -1)
-            # x2 = g2(x2.view(-1, d), self.edges).view(b, n, -1)
-            # x3 = g3(x3.view(-1, d), self.edges).view(b, n, -1)
+            # x1 = g1(x1.view(-1, d), self.edges).view(b, n, -1) # torch.Size([1, 2708, 32])
+            # x2 = g2(x2.view(-1, d), self.edges).view(b, n, -1) # torch.Size([1, 2708, 32])
+            # x3 = g3(x3.view(-1, d), self.edges).view(b, n, -1) # torch.Size([1, 2708, 32])
 
             graph_x = torch.cat([x1.detach(), x2.detach(), x3.detach()], -1)
 
-            graph_x, edges, lprobs = f(graph_x, self.edges,
-                                       None)
+            graph_x, edges, lprobs = f(graph_x, self.edges, None)
             if lprobs is not None:
                 lprobslist.append(lprobs)
             if (warm_up == True):
@@ -77,8 +79,6 @@ class DGM_Model(torch.nn.Module):
                 self.edges = edges
 
         return x1, x2, x3, self.edges, torch.stack(lprobslist, -1) if len(lprobslist) > 0 else None
-
-
 
     def training_step(self, train_batch, batch_idx):
 

@@ -5,11 +5,11 @@ import os
 os.environ["CUDA_VISIBLE_DEVICES"] = '0,1, 2,3'
 os.environ['MASTER_ADDR'] = 'localhost'
 os.environ['MASTER_PORT'] = '5678'
-os.environ["USE_KEOPS"] = "False"
+os.environ["USE_KEOPS"] = "False";
 import numpy as np
 import torch
 from argparse import ArgumentParser
-from model import  Model_All
+from model_houston import  Model_All
 import utils
 import time
 from torch.utils.data.dataset import Dataset
@@ -21,6 +21,7 @@ import torch.nn as nn
 import scipy.io as sio
 
 class ClipLoss(nn.Module):
+
     def __init__(self, logit_scale=5):
         super().__init__()
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))  #####
@@ -34,6 +35,7 @@ class ClipLoss(nn.Module):
         # normalized features
         image_features = image_features / image_features.norm(dim=1, keepdim=True)
         text_features = text_features / text_features.norm(dim=1, keepdim=True)
+
         logit_scale = self.logit_scale.exp()
 
         ## cosine similarity as logits
@@ -45,6 +47,7 @@ class ClipLoss(nn.Module):
     def forward(self, image_features, text_features, cal_similarity=False):
         device = image_features.device
         logits_per_image, logits_per_text = self.get_logits(image_features, text_features)
+
         if cal_similarity:
             return logits_per_image
 
@@ -202,7 +205,6 @@ class MyDataset(Dataset):
         return len(self.gt_labeled)
 
 def train(labels):
-
     model.train()
     OA_best = 0
     AA_OA_best = 0
@@ -245,34 +247,46 @@ def train(labels):
             queue_8 = utils.Queue(capacity=capacity, dim=dim_feature)
             queue_9 = utils.Queue(capacity=capacity, dim=dim_feature)
             queue_10 = utils.Queue(capacity=capacity, dim=dim_feature)
+            queue_11 = utils.Queue(capacity=capacity, dim=dim_feature)
+            queue_12 = utils.Queue(capacity=capacity, dim=dim_feature)
+            queue_13 = utils.Queue(capacity=capacity, dim=dim_feature)
+            queue_14 = utils.Queue(capacity=capacity, dim=dim_feature)
 
             for n, label in enumerate(train_lab):
                 if (label == 0):
-                    queue_0.enqueue(train_feature[n,:])
+                    queue_0.enqueue(train_feature[n, :])
                 elif (label == 1):
-                    queue_1.enqueue(train_feature[n,:])
+                    queue_1.enqueue(train_feature[n, :])
                 elif (label == 2):
-                    queue_2.enqueue(train_feature[n,:])
+                    queue_2.enqueue(train_feature[n, :])
                 elif (label == 3):
-                    queue_3.enqueue(train_feature[n,:])
+                    queue_3.enqueue(train_feature[n, :])
                 elif (label == 4):
-                    queue_4.enqueue(train_feature[n,:])
+                    queue_4.enqueue(train_feature[n, :])
                 elif (label == 5):
-                    queue_5.enqueue(train_feature[n,:])
+                    queue_5.enqueue(train_feature[n, :])
                 elif (label == 6):
-                    queue_6.enqueue(train_feature[n,:])
+                    queue_6.enqueue(train_feature[n, :])
                 elif (label == 7):
-                    queue_7.enqueue(train_feature[n,:])
+                    queue_7.enqueue(train_feature[n, :])
                 elif (label == 8):
-                    queue_8.enqueue(train_feature[n,:])
+                    queue_8.enqueue(train_feature[n, :])
                 elif (label == 9):
-                    queue_9.enqueue(train_feature[n,:])
+                    queue_9.enqueue(train_feature[n, :])
                 elif (label == 10):
-                    queue_10.enqueue(train_feature[n,:])
+                    queue_10.enqueue(train_feature[n, :])
+                elif (label == 11):
+                    queue_11.enqueue(train_feature[n, :])
+                elif (label == 12):
+                    queue_12.enqueue(train_feature[n, :])
+                elif (label == 13):
+                    queue_13.enqueue(train_feature[n, :])
+                elif (label == 14):
+                    queue_14.enqueue(train_feature[n, :])
 
             for n in range(capacity):
                 temp = torch.empty((1, dim_feature))
-                temp = torch.unsqueeze(queue_0.dequeue(),dim=0)
+                temp = torch.unsqueeze(queue_0.dequeue(), dim=0)
                 temp = torch.cat([temp, torch.unsqueeze(queue_1.dequeue(), dim=0)], dim=0)
                 temp = torch.cat([temp, torch.unsqueeze(queue_2.dequeue(), dim=0)], dim=0)
                 temp = torch.cat([temp, torch.unsqueeze(queue_3.dequeue(), dim=0)], dim=0)
@@ -282,7 +296,11 @@ def train(labels):
                 temp = torch.cat([temp, torch.unsqueeze(queue_7.dequeue(), dim=0)], dim=0)
                 temp = torch.cat([temp, torch.unsqueeze(queue_8.dequeue(), dim=0)], dim=0)
                 temp = torch.cat([temp, torch.unsqueeze(queue_9.dequeue(), dim=0)], dim=0)
-                temp = torch.cat([temp, torch.unsqueeze(queue_10.dequeue(), dim=0)], dim=0).to(device2)
+                temp = torch.cat([temp, torch.unsqueeze(queue_10.dequeue(), dim=0)], dim=0)
+                temp = torch.cat([temp, torch.unsqueeze(queue_11.dequeue(), dim=0)], dim=0)
+                temp = torch.cat([temp, torch.unsqueeze(queue_12.dequeue(), dim=0)], dim=0)
+                temp = torch.cat([temp, torch.unsqueeze(queue_13.dequeue(), dim=0)], dim=0)
+                temp = torch.cat([temp, torch.unsqueeze(queue_14.dequeue(), dim=0)], dim=0).to(device2)
                 loss_clip_all += Loss(image_features=temp, text_features=Z_text)
 
             # GRAPH LOSS
@@ -307,8 +325,8 @@ def train(labels):
             opti.step()
             model.vision_net.FCFLM.update_moving_average()
             corr_pred = (train_pred == train_lab).float().detach().sum()
-            print(f"epoch: {epoches}-{epoch + 1}-{i}  loss:{ loss.item()}  train_acc {corr_pred / len(train_lab)}")
-            fw.write(f"epoch: {epoches}-{epoch + 1}-{i}  loss:{ loss.item()}  train_acc {corr_pred / len(train_lab)}\n")
+            print(f"epoch: {epoches}-{epoch + 1}-{i} loss:{loss}  train_acc {corr_pred / len(train_lab)} ")
+            fw.write(f"epoch: {epoches}-{epoch + 1}-{i} loss:{loss}  train_acc {corr_pred / len(train_lab)}\n ")
 
         if((epoch+1) % 5 ==0):
             model.eval()
@@ -335,24 +353,25 @@ def train(labels):
             OA = accuracy_score(test_true, test_pred)
             AA = recall_score(test_true, test_pred, average='macro')
             kappa = cohen_kappa_score(test_true, test_pred)
-            class_name = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11']  # muffl
+            class_name = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15']  # houston
             report_log = classification_report(test_true, test_pred, target_names=class_name, digits=4)
             print(report_log)
             fw.write(report_log)
             fw.write("\n")
-
             if (OA_best < OA):
                 OA_best = OA
                 AA_OA_best = AA
                 Kappa_OA_best = kappa
-                torch.save(model.state_dict(), f"./results/muufl/Muufl_{OA}.pth")
-                sio.savemat(f'./results/muufl/muufl_{OA_best}.mat', {'data': pred_map.numpy()})
+                torch.save(model.state_dict(), f"./results/houston/houston_{OA}.pth")
+                sio.savemat(f'./results/houston/houston_{OA_best}.mat', {'data': pred_map.numpy()})
             print(f"OA: {OA}\nAA: {AA}\nKappa: {kappa}\n\nOA_best:{OA_best}\nAA_OA_best:{AA_OA_best}\nKappa_OA_best:{Kappa_OA_best}\n")
             fw.write(f"OA: {OA}\nAA: {AA}\nKappa: {kappa}\n\nOA_best:{OA_best}\nAA_OA_best:{AA_OA_best}\nKappa_OA_best:{Kappa_OA_best}\n")
 
 
 if __name__ == '__main__':
     parser = ArgumentParser()
+    # parser.add_argument('--local_rank', default=-1, type=int,
+    #                     help='node rank for distributed training') ##
     parser.add_argument("--num_gpus", default=4, type=int)
     parser.add_argument("--data", default='Cora')
     parser.add_argument("--fold", default='0', type=int)  # Used for k-fold cross validation in tadpole/ukbb
@@ -371,6 +390,9 @@ if __name__ == '__main__':
     parser.set_defaults(default_root_path='./log')
     params = parser.parse_args()
 
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device2 = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
     def setup_seed(seed):
         torch.manual_seed(seed)
         torch.cuda.manual_seed_all(seed)
@@ -378,25 +400,21 @@ if __name__ == '__main__':
         random.seed(seed)
         torch.backends.cudnn.deterministic = True
 
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    device2 = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    # -----------------------------------------------------------------------------------
-    dataset_name = 'muufl'
-    N_PCA = 15
+    # ------------------------------------------------------------------------------------------------------------------
+    dataset_name = '2013Houston'
+    N_PCA = 16
     setup_seed(20)
     patchsize_HSI = 19
     patchsize_LiDAR = 19
-    graph_num = 15
-    num_samples_per_class = 15 * 10
+    graph_num = 6
+    num_samples_per_class = 6 * 30
 
-    # -----------------------------------------------------------------------------------
-
+    # -----------------------------------------------------------------------------------------------------------------
     print(f"{patchsize_HSI} x {patchsize_HSI}")
     hsi, labels, lidar = utils.get_data(dataset_name=dataset_name, NC=N_PCA)
     lidar = np.expand_dims(lidar, 2).repeat(N_PCA, axis=2)
     class_num = labels.max()
     # ----------------------------------------------------------------------------------
-
     gt_labeled, labeled_data_hsi, labeled_data_lidar, All_labeled_Patch_HSI, All_labeled_Patch_LiDAR, train_mask, test_mask, pos_array, batch_data_id, unlabeled_Patch_HSI, unlabeled_Patch_LiDAR = \
         get_data(hsi=hsi, lidar=lidar, gt=labels, graph_num=graph_num, patchsize_HSI=patchsize_HSI,
                  patchsize_LiDAR=patchsize_LiDAR, num_samples_per_class=num_samples_per_class,
@@ -414,25 +432,29 @@ if __name__ == '__main__':
     train_loader = DataLoader(dataset, batch_size=1, shuffle=True)  #
 
     # ----------------------------------------------------------------------------------
-    text = ['A sample of Trees. Trees are natural vegetation, coexisting with grass in the landscape. They belong to the plant category, growing on the ground. Buildings cast shadows, creating contrast with trees. Trees in urban areas are often found near roads and sidewalks.',
-            'A sample of Mostly grass. Grass, a natural vegetation, forms green lawns and often grows alongside trees. Together, they create a natural ecosystem, supporting oxygen production and habitats. Grass is distinct from roads and sidewalks. It may also interface with dirt and sand, adding to the diverse ground surface.',
-            'A sample of Mixed ground surface. Mixed ground surfaces combine various materials like grass, gravel, dirt, and wood chips. They can harmonize with trees, casting shadows on different textures. These surfaces also interact with roads and sidewalks. Transitional areas between surfaces often feature gravel or pavement.',
-            'A sample of Dirt and sand. Dirt and sand are natural ground materials commonly found in outdoor environments. They often coexist in areas such as beaches, deserts, and construction sites. Dirt and sand provide a distinct texture and color to the ground surface.',
-            'A sample of Road. Roads are constructed for vehicle transportation, interacting with sidewalks, buildings, and trees to shape the urban landscape. Yellow curbs indicate parking restrictions. Roads may pass through mixed ground surfaces or border mostly grass areas.',
-            'A sample of Water. Water refers to bodies of water such as oceans, lakes, rivers, and ponds.Water bodies can interact with Trees and Grass.They can be adjacent to Beach areas characterized by sand and Mixed ground surfaces. Water bodies may be crossed by Bridges or bordered by Buildings and Sidewalks.',
-            'A sample of Building Shadow. Building shadows are cast when sunlight is obstructed, creating striking patterns and contrasts on the ground. They interact with trees, falling on canopies and creating shaded areas. Building shadows are influenced by building position and height, adding depth and texture to the environment. They enhance the visual appeal of mixed ground surfaces, highlighting texture variations.',
-            'A sample of Building. Buildings are man-made structures for residential, commercial, or industrial use. They interact with roads and sidewalks, serving as landmarks and casting shadows that affect lighting. Buildings may feature cloth panels for sun protection and aesthetics.',
-            'A sample of Sidewalk. Sidewalks are pedestrian walkways next to roads, ensuring safety away from traffic. They border buildings, roads, and grassy areas. Sidewalks can be made of concrete or paving stones and may have yellow curbs for parking restrictions or loading zones.',
-            'A sample of Yellow curb. Yellow curbs are yellow-painted roadside curbs that indicate parking regulations. They mark no-parking zones, loading areas, and reserved spaces. Yellow curbs interact with sidewalks and roads, guiding drivers and pedestrians. They are often found near buildings, indicating restricted parking areas.',
-            'A sample of Cloth panels. Cloth panels are fabric materials used outdoors in canopies, tents, or awnings for shade and protection. They can create designated areas or visual barriers as temporary partitions. Cloth panels enhance parks, outdoor events, and recreational areas.'
+    text = ['A sample of Health grass. Health grass is recognized by its vibrant green color, indicating robust growth and well-maintained condition. It usually flourishes near water bodies and trees, thriving in well-watered and sunny areas.',
+            'A sample of Stressed grass. Stressed grass looks pale or faded due to lack of water or heavy foot traffic. It is commonly found near residential or commercial areas with frequent human activity.',
+            'A sample of Synthetic grass. Synthetic grass always looks the same because it is made from artificial materials. It is widely used in sports facilities and artificial landscapes as a low-maintenance alternative to natural grass.',
+            'A sample of Trees. Trees have a strong trunk and a wide canopy of leaves. They are frequently seen in green spaces, parks, residential areas, and along streets, offering shade and beautifying the urban environment.',
+            'A sample of Soil. Soil forms the surface of the ground, providing a foundation for the growth of vegetation. Its characteristics, including texture and composition, may vary throughout the image.',
+            'A sample of Water. Water denotes various water bodies like lakes, rivers, and ponds. It is frequently bordered by healthy grass and trees, serving as a vital water source for vegetation.',
+            'A sample of Residential. Residential areas consist of housing structures and are typically situated near commercial areas and road networks.',
+            'A sample of Commercial. Commercial areas are characterized by various business activities and are commonly located along roads and highways.',
+            'A sample of Road. Roads traverse the image, connecting different areas and serving as a vital transportation network.',
+            'A sample of Highway. Highways are major arterial roads designed for high-volume traffic and long-distance travel.',
+            'A sample of Railway. Railways are transportation routes for trains and may run parallel to roads or cross the image, connecting urban areas.',
+            'A sample of Parking lot 1. Parking lot 1 represents areas designated for vehicle parking. It may be smaller and commonly found near residential or commercial zones',
+            'A sample of Parking lot 2. Parking lot 2 represents areas designated for vehicle parking. It may be larger and situated near commercial areas or sports facilities.',
+            'A sample of Tennis court. Tennis courts are specialized sports facilities designed exclusively for tennis activities.',
+            'A sample of Running track. Running tracks are circular or oval tracks used for athletics and may be located in sports complexes or public grounds.',
             ]
-
     model = Model_All(params, patchsize_HSI, device1=device, device2=device2, class_num=labels.max(), text=text)
 
-    fw = open("./log_muufl.txt", 'a+')
+    fw = open("./log_houston.", 'a+')
     fw.write(f"\n\n\n")
     fw.write(f"Time: {time.asctime( time.localtime(time.time()) )}\n")
     fw.write(f"{patchsize_HSI} x {patchsize_HSI}")
     print(f"{patchsize_HSI} x {patchsize_HSI}")
     train(labels)
+
 
