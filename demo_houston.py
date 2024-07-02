@@ -450,7 +450,7 @@ if __name__ == '__main__':
             ]
     model = Model_All(params, patchsize_HSI, device1=device, device2=device2, class_num=labels.max(), text=text)
 
-    fw = open("./log_houston.", 'a+')
+    fw = open("./log_houston.txt", 'a+')
     fw.write(f"\n\n\n")
     fw.write(f"Time: {time.asctime( time.localtime(time.time()) )}\n")
     fw.write(f"{patchsize_HSI} x {patchsize_HSI}")
