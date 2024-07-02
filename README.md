@@ -6,17 +6,20 @@ The implementation of the paper "TMCFN: Text-Supervised Multidimensional Contras
 * Python == 3.7
 
 ## Usage
+Datasets ：https://drive.google.com/drive/folders/1R3SgMx1U37FPBIT706_xAVMmxMRrpRzQ?usp=sharing
 
-#### Demo
-
-Run demo in
+Text encoder ：https://drive.google.com/file/d/1f7_1kNAk-Xw5gxyirLrfyRZZ_IfB1px-/view?usp=drive_link
 
 ```
 python demo_muufl.py
+python demo_houston.py
+python demo_trento.py
 ```
-Text encoder ：https://drive.google.com/file/d/1f7_1kNAk-Xw5gxyirLrfyRZZ_IfB1px-/view?usp=drive_link
 
 ## Cite
+If you find the code useful, please consider citing our article:
+
+```
 @ARTICLE{10462155,  
   author={Yang, Yueguang and Qu, Jiahui and Dong, Wenqian and Zhang, Tongzhen and Xiao, Song and Li, Yunsong},  
   journal={IEEE Transactions on Geoscience and Remote Sensing},   
@@ -26,3 +29,5 @@ Text encoder ：https://drive.google.com/file/d/1f7_1kNAk-Xw5gxyirLrfyRZZ_IfB1px
   number={},  
   pages={1-15},  
   doi={10.1109/TGRS.2024.3374372}}
+```
+
